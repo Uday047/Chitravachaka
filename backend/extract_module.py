@@ -23,6 +23,10 @@ def configure_tesseract():
         pass
     else:
         raise OSError("Tesseract not found. Install Tesseract and ensure it's in PATH.")
+    
+    # ✅ Added for Render deployment (uses local tessdata folder)
+    os.environ["TESSDATA_PREFIX"] = os.path.join(os.path.dirname(__file__), "tessdata")
+
     print(f"[INFO] Tesseract configured: {pytesseract.pytesseract.tesseract_cmd}")
     _TESSERACT_CONFIGURED = True
 
