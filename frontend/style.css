@@ -1,0 +1,439 @@
+/* Mobile-first responsive design */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+    color: #333;
+}
+
+/* Safe area support for notches */
+@supports(padding: max(0px)) {
+    .container {
+        padding-left: max(1rem, env(safe-area-inset-left));
+        padding-right: max(1rem, env(safe-area-inset-right));
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+}
+
+.container {
+    width: 100%;
+    min-height: 100vh;
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header with status bar space */
+.header {
+    background: linear-gradient(135deg, #4a00e0 0%, #8e2de2 100%);
+    color: white;
+    padding: max(1rem, env(safe-area-inset-top)) 1rem 1rem 1rem;
+    text-align: center;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+}
+
+.header h1 {
+    font-size: clamp(1.5rem, 5vw, 2rem);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.header p {
+    font-size: clamp(0.9rem, 3vw, 1.1rem);
+    opacity: 0.9;
+}
+
+/* Content area */
+.content {
+    flex: 1;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Touch-friendly buttons */
+.option-card {
+    border: 2px dashed #4a00e0;
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: white;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    touch-action: manipulation;
+    box-shadow: 0 4px 15px rgba(74, 0, 224, 0.1);
+}
+
+.option-card:active {
+    transform: scale(0.98);
+    background-color: #f8f5ff;
+}
+
+.option-card h2 {
+    color: #4a00e0;
+    font-size: clamp(1.2rem, 4vw, 1.5rem);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.option-card p {
+    color: #666;
+    font-size: clamp(0.8rem, 3vw, 0.9rem);
+}
+
+/* Divider */
+.divider {
+    position: relative;
+    height: 1px;
+    background: #e0e0e0;
+    margin: 1rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.divider span {
+    background: white;
+    padding: 0 1rem;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Camera styles for full-screen mobile */
+.camera-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: black;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+}
+
+.camera-view {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#camera-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    background: #000;
+}
+
+.camera-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.camera-controls {
+    position: fixed;
+    bottom: max(2rem, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.capture-btn {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: white;
+    border: 4px solid #4a00e0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.capture-btn:active {
+    transform: scale(0.9);
+}
+
+.capture-btn-inner {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #4a00e0;
+}
+
+/* Back button */
+.back-btn {
+    position: fixed;
+    top: max(1rem, env(safe-area-inset-top));
+    left: 1rem;
+    background: rgba(255,255,255,0.9);
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #4a00e0;
+    z-index: 1001;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* Processing screen */
+.processing-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+    min-height: 60vh;
+}
+
+.processing-icon {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #4a00e0;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.processing-text h2 {
+    color: #4a00e0;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.processing-text p {
+    color: #666;
+    font-size: 1rem;
+}
+
+/* Result screen */
+.result-card {
+    background: #f8f5ff;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.result-text {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    margin: 1rem 0;
+    min-height: 100px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.text-block {
+    margin-bottom: 1rem;
+}
+
+.text-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.copy-btn {
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+    transition: background-color 0.2s;
+}
+
+.copy-btn:active {
+    background-color: #e0e0e0;
+}
+
+.result-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.action-btn {
+    padding: 1rem;
+    border: 2px solid #4a00e0;
+    border-radius: 8px;
+    background: white;
+    color: #4a00e0;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.action-btn.primary {
+    background: #4a00e0;
+    color: white;
+}
+
+.action-btn:active {
+    transform: scale(0.98);
+}
+
+/* Error screen */
+.error-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Footer */
+.footer {
+    background: #f8f9fa;
+    padding: 1rem;
+    text-align: center;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.footer p {
+    color: #6c757d;
+    font-size: 0.8rem;
+}
+
+.install-btn {
+    padding: 0.75rem 1rem;
+    background: #4a00e0;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.install-btn:active {
+    transform: scale(0.98);
+}
+
+/* Utility classes */
+.hidden {
+    display: none !important;
+}
+
+.file-input {
+    display: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .content {
+        padding: 1rem;
+    }
+    
+    .option-card {
+        padding: 1.25rem;
+        min-height: 100px;
+    }
+    
+    .capture-btn {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .capture-btn-inner {
+        width: 50px;
+        height: 50px;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    body {
+        background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    }
+    
+    .container {
+        background: #1a202c;
+        color: #e2e8f0;
+    }
+    
+    .option-card {
+        background: #2d3748;
+        border-color: #4a00e0;
+    }
+    
+    .option-card h2 {
+        color: #e2e8f0;
+    }
+    
+    .option-card p {
+        color: #a0aec0;
+    }
+    
+    .result-card {
+        background: #2d3748;
+    }
+    
+    .result-text {
+        background: #4a5568;
+        color: #e2e8f0;
+        border-color: #4a5568;
+    }
+    
+    .footer {
+        background: #2d3748;
+        border-color: #4a5568;
+    }
+}
