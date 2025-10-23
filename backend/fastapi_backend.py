@@ -9,12 +9,23 @@ from deep_translator import GoogleTranslator
 from extract_module import extract_text
 from text_to_speech import text_to_speech
 
-# Tesseract
-os.environ["TESSDATA_PREFIX"] = "C:\\Program Files\\Tesseract-OCR\\tessdata\\"
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# ----------------- Tesseract -----------------
+# Use environment variable for cloud deployments
+TESSDATA_DIR = os.getenv("TESSDATA_PREFIX", "backend/tessdata/")
+pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD", "/usr/bin/tesseract")
+os.environ["TESSDATA_PREFIX"] = TESSDATA_DIR
 
+# ----------------- FastAPI -----------------
 app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+# ----------------- Static folders -----------------
 os.makedirs("static/audio", exist_ok=True)
 os.makedirs("static/uploads", exist_ok=True)
 
@@ -25,33 +36,52 @@ async def async_tts(text, lang, filename):
 
 async def async_translate(text, target_lang):
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, GoogleTranslator(source='kn', target=target_lang).translate, text)
+    return await loop.run_in_executor(
+        None,
+        GoogleTranslator(source='kn', target=target_lang).translate,
+        text
+    )
 
 # ----------------- Endpoints -----------------
 @app.get("/")
-async def root(): return {"message": "ಚಿತ್ರವಚಕ API is running!", "status": "healthy"}
+async def root():
+    return {"message": "ಚಿತ್ರವಚಕ API is running!", "status": "healthy"}
 
 @app.get("/health")
-async def health_check(): return {"status": "healthy"}
+async def health_check():
+    return {"status": "healthy"}
 
 @app.post("/process/")
 async def process_image(file: UploadFile = File(...)):
-    if not file.content_type.startswith('image/'): raise HTTPException(status_code=400, detail="File must be an image")
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="File must be an image")
     contents = await file.read()
-    if not contents: raise HTTPException(status_code=400, detail="Empty file")
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty file")
 
     # Save image
     upload_filename = f"{uuid.uuid4().hex}.jpg"
     upload_path = f"static/uploads/{upload_filename}"
-    with open(upload_path, "wb") as f: f.write(contents)
+    with open(upload_path, "wb") as f:
+        f.write(contents)
 
     image = Image.open(io.BytesIO(contents))
-    if image.mode != 'RGB': image = image.convert('RGB')
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
 
     # OCR
     text_kn = extract_text(image, upload_filename)
     if not text_kn.strip():
-        return JSONResponse({"image_url": f"/static/uploads/{upload_filename}", "text_kn": "", "audio_kn": None, "text_en": "", "audio_en": None, "text_hi": "", "audio_hi": None, "error": "No text found"})
+        return JSONResponse({
+            "image_url": f"/static/uploads/{upload_filename}",
+            "text_kn": "",
+            "audio_kn": None,
+            "text_en": "",
+            "audio_en": None,
+            "text_hi": "",
+            "audio_hi": None,
+            "error": "No text found"
+        })
 
     # Audio filenames
     audio_kn_file = f"static/audio/{uuid.uuid4().hex}_kn.mp3"
@@ -83,4 +113,4 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)), reload=True)
