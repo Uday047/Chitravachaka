@@ -10,9 +10,9 @@ from extract_module import extract_text
 from text_to_speech import text_to_speech
 
 # ----------------- Tesseract -----------------
-# Use environment variable for cloud deployments
-TESSDATA_DIR = os.getenv("TESSDATA_PREFIX", "backend/tessdata/")
-pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD", "/usr/bin/tesseract")
+# Updated for Railway deployment
+TESSDATA_DIR = os.getenv("TESSDATA_PREFIX", "./tessdata")
+pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD", "tesseract")
 os.environ["TESSDATA_PREFIX"] = TESSDATA_DIR
 
 # ----------------- FastAPI -----------------
@@ -113,4 +113,4 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)), reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
