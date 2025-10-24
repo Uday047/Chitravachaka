@@ -2,7 +2,7 @@ class ChitravachakaApp {
     constructor() {
         this.deferredPrompt = null;
         this.currentStream = null;
-        this.backendUrl = 'http://127.0.0.1:8000';
+        this.backendUrl = 'https://chitravachaka-production.up.railway.app';
         this.currentAudio = null;
         this.currentAudioButton = null;
         this.currentAudioLang = null;
