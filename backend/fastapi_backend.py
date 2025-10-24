@@ -6,8 +6,8 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 from deep_translator import GoogleTranslator
 
-from extract_module import extract_text
-from text_to_speech import text_to_speech
+from .extract_module import extract_text
+from .text_to_speech import text_to_speech
 
 # ----------------- Tesseract -----------------
 # Updated for Railway deployment
