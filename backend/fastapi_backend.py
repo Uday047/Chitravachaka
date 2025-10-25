@@ -16,10 +16,19 @@ pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD", "tesseract")
 os.environ["TESSDATA_PREFIX"] = TESSDATA_DIR
 
 # ----------------- FastAPI -----------------
-app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.0")
+app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.1")
+
+# ----------------- CORS -----------------
+origins = [
+    "https://jade-queijadas-455bcd.netlify.app",  # ✅ Your Netlify frontend
+    "https://chitravachaka-production.up.railway.app",  # ✅ Your Railway backend
+    "http://localhost:3000",  # for local dev
+    "http://127.0.0.1:5500"   # for testing locally
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -55,11 +64,12 @@ async def health_check():
 async def process_image(file: UploadFile = File(...)):
     if not file.content_type.startswith('image/'):
         raise HTTPException(status_code=400, detail="File must be an image")
+
     contents = await file.read()
     if not contents:
         raise HTTPException(status_code=400, detail="Empty file")
 
-    # Save image
+    # Save uploaded image
     upload_filename = f"{uuid.uuid4().hex}.jpg"
     upload_path = f"static/uploads/{upload_filename}"
     with open(upload_path, "wb") as f:
@@ -69,7 +79,7 @@ async def process_image(file: UploadFile = File(...)):
     if image.mode != 'RGB':
         image = image.convert('RGB')
 
-    # OCR
+    # OCR extraction
     text_kn = extract_text(image, upload_filename)
     if not text_kn.strip():
         return JSONResponse({
@@ -83,12 +93,12 @@ async def process_image(file: UploadFile = File(...)):
             "error": "No text found"
         })
 
-    # Audio filenames
+    # Generate audio filenames
     audio_kn_file = f"static/audio/{uuid.uuid4().hex}_kn.mp3"
     audio_en_file = f"static/audio/{uuid.uuid4().hex}_en.mp3"
     audio_hi_file = f"static/audio/{uuid.uuid4().hex}_hi.mp3"
 
-    # Run TTS + translation concurrently
+    # Run translation + TTS concurrently
     trans_en_task = asyncio.create_task(async_translate(text_kn, 'en'))
     trans_hi_task = asyncio.create_task(async_translate(text_kn, 'hi'))
     tts_kn_task = asyncio.create_task(async_tts(text_kn, 'kn', audio_kn_file))
@@ -109,8 +119,10 @@ async def process_image(file: UploadFile = File(...)):
         "error": None
     }
 
+# ----------------- Serve static files -----------------
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# ----------------- Run locally -----------------
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
