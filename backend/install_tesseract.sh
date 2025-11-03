@@ -1,23 +1,27 @@
 #!/bin/bash
 set -e
 
-echo "📦 Installing latest Tesseract OCR (AI-based LSTM engine) for Debian/Railway..."
+echo "📦 Installing latest Tesseract OCR (AI-based LSTM engine)..."
 
-# Update package list
+# Update and install base dependencies
+apt-get update -y
+apt-get install -y wget gnupg apt-utils lsb-release
+
+# Add Debian bookworm-backports for latest Tesseract
+echo "deb http://deb.debian.org/debian bookworm-backports main contrib non-free" >> /etc/apt/sources.list
 apt-get update -y
 
-# Install dependencies
-apt-get install -y lsb-release apt-utils gnupg wget
+# Install latest Tesseract and essential language data
+apt-get install -y -t bookworm-backports \
+    tesseract-ocr tesseract-ocr-eng tesseract-ocr-hin tesseract-ocr-kan
 
-# Add Debian backports (for newer Tesseract builds)
-echo "deb http://deb.debian.org/debian bookworm-backports main" >> /etc/apt/sources.list
-apt-get update -y
+# Verify installation and version
+echo "✅ Installed Tesseract version:"
+tesseract --version || (echo "❌ Tesseract failed to install!" && exit 1)
+which tesseract
 
-# Install latest Tesseract + Kannada, Hindi, English traineddata
-apt-get install -y -t bookworm-backports tesseract-ocr \
-    tesseract-ocr-eng tesseract-ocr-hin tesseract-ocr-kan
+# Set environment variables for FastAPI
+export TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
+export PATH=$PATH:/usr/bin
 
-# Verify installation
-tesseract --version || { echo "❌ Tesseract failed to install"; exit 1; }
-
-echo "✅ Tesseract (AI-LSTM) successfully installed!"
+echo "✅ Tesseract OCR (AI-based LSTM) setup complete!"
