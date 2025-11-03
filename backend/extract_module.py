@@ -20,11 +20,13 @@ def configure_tesseract():
         pytesseract.pytesseract.tesseract_cmd = win_path
         os.environ["TESSDATA_PREFIX"] = r"C:\Program Files\Tesseract-OCR\tessdata"
     elif shutil.which("tesseract"):
-        pass
+        # ✅ Ensure correct binary path on Linux (Railway/Docker)
+        pytesseract.pytesseract.tesseract_cmd = shutil.which("tesseract") or "/usr/bin/tesseract"
+        os.environ["TESSDATA_PREFIX"] = "/usr/share/tesseract-ocr/4.00/tessdata"
     else:
         raise OSError("Tesseract not found. Install Tesseract and ensure it's in PATH.")
     
-    # ✅ Added for Render deployment (uses local tessdata folder)
+    # ✅ Preserve your Render/local tessdata override
     os.environ["TESSDATA_PREFIX"] = os.path.join(os.path.dirname(__file__), "tessdata")
 
     print(f"[INFO] Tesseract configured: {pytesseract.pytesseract.tesseract_cmd}")
