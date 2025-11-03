@@ -17,7 +17,30 @@ cd tesseract
 # Build and install
 ./autogen.sh
 ./configure
-make -j$(nproc)
+make -j$(nproc)#!/bin/bash
+set -e
+
+echo "📦 Installing latest Tesseract OCR (AI-based LSTM engine)..."
+
+# Ensure we’re root
+export DEBIAN_FRONTEND=noninteractive
+
+# Update & install prerequisites
+apt-get update -y
+apt-get install -y software-properties-common apt-transport-https gnupg curl
+
+# Add official Tesseract repo (contains latest LSTM model)
+add-apt-repository -y ppa:alex-p/tesseract-ocr5
+apt-get update -y
+
+# Install Tesseract 5.x+ and Kannada data
+apt-get install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-hin tesseract-ocr-kan
+
+# Show installed version
+tesseract --version
+
+echo "✅ Latest Tesseract AI engine installed successfully!"
+
 make install
 ldconfig
 
