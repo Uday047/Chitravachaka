@@ -16,12 +16,12 @@ pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD", "/usr/bin/tes
 os.environ["TESSDATA_PREFIX"] = TESSDATA_DIR
 
 # ----------------- FastAPI -----------------
-app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.2")
+app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.3")
 
-# ----------------- CORS -----------------
+# ----------------- CORS (must be before any routes or mounts) -----------------
 origins = [
-    "https://jade-queijadas-455bcd.netlify.app",  # ✅ Your Netlify frontend
-    "https://chitravachaka-production.up.railway.app",  # ✅ Your Railway backend
+    "https://jade-queijadas-455bcd.netlify.app",  # ✅ Netlify frontend
+    "https://chitravachaka-production.up.railway.app",  # ✅ Railway backend
     "http://localhost:3000",  # local dev
     "http://127.0.0.1:5500"
 ]
@@ -31,10 +31,10 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
-# ----------------- Static folders -----------------
+# ----------------- Create static folders -----------------
 os.makedirs("static/audio", exist_ok=True)
 os.makedirs("static/uploads", exist_ok=True)
 
