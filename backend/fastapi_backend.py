@@ -10,20 +10,20 @@ from .extract_module import extract_text
 from .text_to_speech import text_to_speech
 
 # ----------------- Tesseract -----------------
-# Updated for Railway deployment
+# ✅ Updated for Railway deployment
 TESSDATA_DIR = os.getenv("TESSDATA_PREFIX", "./tessdata")
-pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD", "tesseract")
+pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD", "/usr/bin/tesseract")
 os.environ["TESSDATA_PREFIX"] = TESSDATA_DIR
 
 # ----------------- FastAPI -----------------
-app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.1")
+app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.2")
 
 # ----------------- CORS -----------------
 origins = [
     "https://jade-queijadas-455bcd.netlify.app",  # ✅ Your Netlify frontend
     "https://chitravachaka-production.up.railway.app",  # ✅ Your Railway backend
-    "http://localhost:3000",  # for local dev
-    "http://127.0.0.1:5500"   # for testing locally
+    "http://localhost:3000",  # local dev
+    "http://127.0.0.1:5500"
 ]
 
 app.add_middleware(
@@ -122,7 +122,8 @@ async def process_image(file: UploadFile = File(...)):
 # ----------------- Serve static files -----------------
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# ----------------- Run locally -----------------
+# ----------------- Run locally / Railway -----------------
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+    uvicorn.run("backend.fastapi_backend:app", host="0.0.0.0", port=port)
