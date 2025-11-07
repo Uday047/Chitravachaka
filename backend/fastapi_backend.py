@@ -22,7 +22,7 @@ app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.4")
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 origins = [
-    "https://jade-queijadas-455bcd.netlify.app",  # Netlify frontend
+    "https://gleeful-clafoutis-56c39b.netlify.app/",  # Netlify frontend
     "https://chitravachaka-production.up.railway.app",  # Railway backend
     "http://localhost:3000",
     "http://127.0.0.1:5500"
