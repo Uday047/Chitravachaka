@@ -16,14 +16,15 @@ pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD", "/usr/bin/tes
 os.environ["TESSDATA_PREFIX"] = TESSDATA_DIR
 
 # ----------------- FastAPI -----------------
-app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.4")
+app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.5")
 
 # ----------------- ✅ Security + CORS Middleware -----------------
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
+# ⚠️ Make sure this EXACT Netlify URL matches your deployed frontend
 origins = [
-    "https://gleeful-clafoutis-56c39b.netlify.app/",  # Netlify frontend
-    "https://chitravachaka-production.up.railway.app",  # Railway backend
+    "https://gleeful-clafoutis-56c39b.netlify.app",  # ✅ Netlify frontend (no trailing /)
+    "https://chitravachaka-production.up.railway.app",  # ✅ Railway backend
     "http://localhost:3000",
     "http://127.0.0.1:5500"
 ]
@@ -34,7 +35,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],  # ✅ include this to fix preflight issues
+    expose_headers=["*"],  # ✅ fixes preflight
 )
 
 # ----------------- Static folders -----------------
@@ -48,11 +49,8 @@ async def async_tts(text, lang, filename):
 
 async def async_translate(text, target_lang):
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        None,
-        GoogleTranslator(source='kn', target=target_lang).translate,
-        text
-    )
+    translator = GoogleTranslator(source='kn', target=target_lang)
+    return await loop.run_in_executor(None, translator.translate, text)
 
 # ----------------- Endpoints -----------------
 @app.get("/")
@@ -127,6 +125,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ----------------- Run locally / Railway -----------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
     import uvicorn
+    port = int(os.environ.get("PORT", 8080))
     uvicorn.run("backend.fastapi_backend:app", host="0.0.0.0", port=port)
