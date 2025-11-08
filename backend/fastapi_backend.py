@@ -21,9 +21,10 @@ app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.5")
 # ----------------- Security + CORS Middleware -----------------
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
+# ✅ Make sure these match your deployed frontend URLs
 origins = [
-    "https://melodious-kashata-c3d2a4.netlify.app",  # ✅ frontend
-    "https://chitravachaka-production.up.railway.app", # ✅ backend
+    "https://melodious-kashata-c3d2a4.netlify.app",
+    "https://chitravachaka-production.up.railway.app",
     "http://localhost:3000",
     "http://127.0.0.1:5500"
 ]
@@ -34,6 +35,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],  # ✅ ensures fetch + preflight requests succeed
 )
 
 # ----------------- Static folders -----------------
@@ -90,10 +92,12 @@ async def process_image(file: UploadFile = File(...)):
             "error": "No text found"
         })
 
+    # Audio files
     audio_kn_file = f"static/audio/{uuid.uuid4().hex}_kn.mp3"
     audio_en_file = f"static/audio/{uuid.uuid4().hex}_en.mp3"
     audio_hi_file = f"static/audio/{uuid.uuid4().hex}_hi.mp3"
 
+    # Run translation + TTS concurrently
     trans_en_task = asyncio.create_task(async_translate(text_kn, 'en'))
     trans_hi_task = asyncio.create_task(async_translate(text_kn, 'hi'))
     tts_kn_task = asyncio.create_task(async_tts(text_kn, 'kn', audio_kn_file))
