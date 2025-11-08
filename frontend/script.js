@@ -7,10 +7,6 @@ class ChitravachakaApp {
     this.currentAudioButton = null;
     this.currentAudioLang = null;
     this.audioPlayers = {};
-
-    // ✅ Bind methods used as callbacks
-    this.handleFileUpload = this.handleFileUpload.bind(this);
-
     this.init();
   }
 
@@ -22,6 +18,7 @@ class ChitravachakaApp {
     this.handleSystemBack();
     this.handleAppVisibility();
 
+    // Welcome voice
     setTimeout(() =>
       this.speak("ಚಿತ್ರವಚಕ ಅಪ್ಲಿಕೇಶನ್‌ಗೆ ಸ್ವಾಗತ. ಚಿತ್ರವನ್ನು ಸೆರೆಹಿಡಿಯಲು ಕ್ಯಾಮೆರಾ ಬಟನ್ ಒತ್ತಿರಿ."),
       1000
@@ -30,7 +27,7 @@ class ChitravachakaApp {
 
   async checkBackendConnection() {
     try {
-      const res = await fetch(`${this.backendUrl}/`, { mode: 'cors' }); // ✅ force CORS
+      const res = await fetch(`${this.backendUrl}/`);
       console.log(res.ok ? "✅ Backend reachable" : "⚠️ Backend not reachable");
     } catch (e) {
       console.warn("⚠️ Cannot connect to backend. Is FastAPI running?");
@@ -61,7 +58,7 @@ class ChitravachakaApp {
     bind('install-btn', () => this.installApp());
 
     const fileInput = document.getElementById('file-input');
-    if (fileInput) fileInput.addEventListener('change', this.handleFileUpload);
+    if (fileInput) fileInput.addEventListener('change', e => this.handleFileUpload(e));
 
     window.addEventListener('beforeinstallprompt', e => {
       e.preventDefault();
@@ -142,7 +139,7 @@ class ChitravachakaApp {
     this.speak("ಗ್ಯಾಲರಿಯಿಂದ ಚಿತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ.");
   }
 
-  handleFileUpload = (e) => {
+  handleFileUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) return this.showError('ದಯವಿಟ್ಟು ಚಿತ್ರ ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ.');
@@ -157,11 +154,7 @@ class ChitravachakaApp {
     formData.append('file', file, filename);
 
     try {
-      const res = await fetch(`${this.backendUrl}/process/`, {
-        method: 'POST',
-        body: formData,
-        mode: 'cors'
-      });
+      const res = await fetch(`${this.backendUrl}/process/`, { method: 'POST', body: formData });
       if (!res.ok) throw new Error('Backend error');
       const data = await res.json();
       this.showResult(data);
@@ -171,12 +164,192 @@ class ChitravachakaApp {
     }
   }
 
-  // ----------------------- Keep all other methods unchanged -----------------------
-  // showResult, addCopyListeners, addAudioListeners, toggleAudio, showError,
-  // showScreen, stopCamera, goBack, handleRescan, handleSystemBack, handleAppVisibility, installApp
+  showResult(data) {
+    const kn = data.text_kn || '(ಯಾವುದೇ ಪಠ್ಯ ಕಂಡುಬಂದಿಲ್ಲ)';
+    const en = data.text_en || '';
+    const hi = data.text_hi || '';
+
+    document.getElementById('result-text').innerHTML = `
+      <div class="text-block">
+        <div class="text-header"><strong>ಕನ್ನಡ:</strong><button class="copy-btn" data-text="${kn}">📋</button></div>
+        <p>${kn}</p>
+      </div>
+      <div class="text-block">
+        <div class="text-header"><strong>English:</strong><button class="copy-btn" data-text="${en}">📋</button></div>
+        <p>${en}</p>
+      </div>
+      <div class="text-block">
+        <div class="text-header"><strong>हिन्दी:</strong><button class="copy-btn" data-text="${hi}">📋</button></div>
+        <p>${hi}</p>
+      </div>
+    `;
+
+    const actions = document.querySelector('.result-actions');
+    actions.innerHTML = `
+      ${data.audio_kn ? `<button class="audio-btn" data-url="${data.audio_kn}" data-lang="kn" id="btn-kn">🔊 ಓದು (ಕನ್ನಡ)</button>` : ''}
+      ${data.audio_en ? `<button class="audio-btn" data-url="${data.audio_en}" data-lang="en" id="btn-en">▶️ Play English</button>` : ''}
+      ${data.audio_hi ? `<button class="audio-btn" data-url="${data.audio_hi}" data-lang="hi" id="btn-hi">▶️ Play Hindi</button>` : ''}
+      <button class="action-btn primary" id="new-scan">🔄 ಮತ್ತೊಮ್ಮೆ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ</button>
+    `;
+
+    document.getElementById('new-scan').addEventListener('click', () => this.handleRescan());
+    this.addCopyListeners();
+    this.addAudioListeners(data);
+    this.showScreen('result-screen');
+  }
+
+  addCopyListeners() {
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.onclick = e => {
+        const text = e.target.getAttribute('data-text');
+        navigator.clipboard.writeText(text);
+        this.speak("ಪಠ್ಯ ಕ್ಲಿಪ್‌ಬೋರ್ಡ್‌ಗೆ ನಕಲಿಸಲಾಗಿದೆ");
+        e.target.textContent = '✅';
+        setTimeout(() => e.target.textContent = '📋', 1500);
+      };
+    });
+  }
+
+  // ✅ Mic turns OFF when any audio plays, resumes when finished
+  addAudioListeners(data) {
+    const audios = {};
+    const stopMic = () => {
+      if (window.voiceRecognitionActive && window.kannadaRecognition) {
+        console.log('🎙️ Mic paused during audio');
+        window.kannadaRecognition.stop();
+        window.voiceRecognitionActive = false;
+      }
+    };
+    const startMic = () => {
+      if (!window.voiceRecognitionActive && window.kannadaRecognition) {
+        console.log('🎙️ Mic restarted after audio');
+        window.kannadaRecognition.start();
+        window.voiceRecognitionActive = true;
+      }
+    };
+
+    const createAudio = (btnId, url, label) => {
+      const btn = document.getElementById(btnId);
+      if (!btn || !url) return;
+      const audio = new Audio(`${this.backendUrl}${url}`);
+      audios[label] = audio;
+
+      btn.addEventListener('click', () => this.toggleAudio(audio, btn));
+      audio.addEventListener('play', stopMic);
+      audio.addEventListener('ended', () => {
+        btn.textContent =
+          label === 'kn' ? '🔊 ಓದು (ಕನ್ನಡ)' :
+          label === 'en' ? '▶️ Play English' : '▶️ Play Hindi';
+        startMic();
+      });
+    };
+
+    createAudio('btn-kn', data.audio_kn, 'kn');
+    createAudio('btn-en', data.audio_en, 'en');
+    createAudio('btn-hi', data.audio_hi, 'hi');
+
+    this.audioPlayers = audios;
+    if (audios.kn) {
+      this.currentAudio = audios.kn;
+      this.currentAudioLang = 'kn';
+      this.currentAudioButton = document.getElementById('btn-kn');
+      audios.kn.play().catch(e => console.log('Kannada autoplay blocked:', e));
+    }
+  }
+
+  toggleAudio(audioObj, btn) {
+    if (this.currentAudio && this.currentAudio !== audioObj) {
+      this.stopAudio();
+      if (this.currentAudioButton) {
+        this.currentAudioButton.textContent =
+          this.currentAudioLang === 'en' ? '▶️ Play English' :
+          this.currentAudioLang === 'hi' ? '▶️ Play Hindi' : '🔊 ಓದು (ಕನ್ನಡ)';
+      }
+    }
+
+    if (audioObj.paused) {
+      audioObj.play();
+      btn.textContent =
+        btn.dataset.lang === 'en' ? '⏸️ Pause English' :
+        btn.dataset.lang === 'hi' ? '⏸️ Pause Hindi' : '⏸️ ವಿರಾಮ (ಕನ್ನಡ)';
+      this.currentAudio = audioObj;
+      this.currentAudioButton = btn;
+      this.currentAudioLang = btn.dataset.lang;
+    } else {
+      audioObj.pause();
+      btn.textContent =
+        btn.dataset.lang === 'en' ? '▶️ Play English' :
+        btn.dataset.lang === 'hi' ? '▶️ Play Hindi' : '🔊 ಓದು (ಕನ್ನಡ)';
+      this.currentAudio = null;
+      this.currentAudioButton = null;
+      this.currentAudioLang = null;
+    }
+  }
+
+  showError(msg) {
+    this.stopAudio();
+    document.getElementById('error-message').textContent = msg;
+    this.speak(msg);
+    this.showScreen('error-screen');
+  }
+
+  showScreen(id) {
+    if (id !== 'camera-screen') this.stopCamera();
+    if (id !== 'result-screen') this.stopAudio();
+    const screens = ['initial-screen', 'camera-screen', 'processing-screen', 'result-screen', 'error-screen'];
+    screens.forEach(s => document.getElementById(s)?.classList.add('hidden'));
+    document.getElementById(id)?.classList.remove('hidden');
+  }
+
+  stopCamera() {
+    if (this.currentStream) {
+      this.currentStream.getTracks().forEach(t => t.stop());
+      this.currentStream = null;
+    }
+  }
+
+  goBack() {
+    this.stopCamera();
+    this.stopAudio();
+    this.showScreen('initial-screen');
+    this.speak("ಹಿಂದಿನ ಮೆನುವಿಗೆ ಹಿಂತಿರುಗಲಾಗಿದೆ");
+  }
+
+  handleRescan() {
+    this.stopAudio();
+    this.showScreen('initial-screen');
+    this.speak("ಹೊಸ ಸ್ಕ್ಯಾನ್ ಪ್ರಾರಂಭಿಸಲಾಗಿದೆ");
+  }
+
+  handleSystemBack() {
+    history.pushState(null, '', location.href);
+    window.onpopstate = () => {
+      this.goBack();
+      history.pushState(null, '', location.href);
+    };
+  }
+
+  handleAppVisibility() {
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        this.stopAudio();
+      }
+    });
+  }
+
+  async installApp() {
+    if (this.deferredPrompt) {
+      this.deferredPrompt.prompt();
+      await this.deferredPrompt.userChoice;
+      this.deferredPrompt = null;
+      document.getElementById('install-btn')?.classList.add('hidden');
+    }
+  }
 }
 
-// ✅ Kannada Voice Recognition setup (unchanged)
+document.addEventListener('DOMContentLoaded', () => window.chitravachakaApp = new ChitravachakaApp());
+
+// ✅ Kannada Voice Recognition setup
 if ('webkitSpeechRecognition' in window) {
   const recognition = new webkitSpeechRecognition();
   recognition.lang = 'kn-IN';
@@ -219,5 +392,3 @@ if ('webkitSpeechRecognition' in window) {
     }, 2000);
   });
 }
-
-document.addEventListener('DOMContentLoaded', () => window.chitravachakaApp = new ChitravachakaApp());
