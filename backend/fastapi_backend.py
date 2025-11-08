@@ -23,7 +23,7 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 # ✅ Make sure these match your deployed frontend URLs
 origins = [
-    "https://grand-lamington-20920c.netlify.app",  # ✅ your current live frontend
+    "https://amazing-cannoli-394762.netlify.app/",  # ✅ your current live frontend
     "https://chitravachaka-production.up.railway.app",  # your backend domain
     "http://localhost:3000",
     "http://127.0.0.1:5500"
