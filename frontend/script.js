@@ -7,7 +7,7 @@ class ChitravachakaApp {
     this.currentAudioButton = null;
     this.currentAudioLang = null;
     this.audioPlayers = {};
-    this.waitingForCommand = false; // ✅ NEW: track mic waiting state
+    this.waitingForCommand = false; // ✅ track mic waiting state
     this.init();
   }
 
@@ -16,8 +16,10 @@ class ChitravachakaApp {
     this.registerServiceWorker();
     this.setupEventListeners();
     this.checkBackendConnection();
-    this.handleSystemBack();
-    this.handleAppVisibility();
+
+    // ⚠️ FIX: temporarily disable undefined handlers
+    // this.handleSystemBack();
+    // this.handleAppVisibility();
 
     // ✅ Step 1: Welcome Voice (Mic OFF)
     setTimeout(() => {
@@ -95,7 +97,6 @@ class ChitravachakaApp {
     }
   }
 
-  // ✅ Mic Control
   stopMic() {
     if (window.voiceRecognitionActive && window.kannadaRecognition) {
       window.kannadaRecognition.stop();
@@ -132,7 +133,6 @@ class ChitravachakaApp {
       });
       document.getElementById('camera-view').srcObject = this.currentStream;
       document.getElementById('camera-placeholder').classList.add('hidden');
-      // ✅ Step 3
       this.speak("ಕ್ಯಾಮೆರಾ ತೆರೆಯಲಾಗಿದೆ. 'ಫೋಟೋ ತೆಗೆ' ಎಂದು ಹೇಳಿ.");
       setTimeout(() => this.startListeningForCommand('camera'), 4000);
     } catch (err) {
@@ -181,7 +181,6 @@ class ChitravachakaApp {
       if (!res.ok) throw new Error('Backend error');
       const data = await res.json();
 
-      // ✅ Step 8 — check empty Kannada text
       if (!data.text_kn || data.text_kn.trim() === '') {
         this.speak("ಯಾವುದೇ ಪಠ್ಯ ಕಂಡುಬಂದಿಲ್ಲ.");
         this.handleRescan();
@@ -193,6 +192,35 @@ class ChitravachakaApp {
       console.error('Processing failed:', err);
       this.showError('ಚಿತ್ರ ಪ್ರಕ್ರಿಯೆ ವಿಫಲವಾಗಿದೆ.');
     }
+  }
+
+  // ✅ NEW helper functions (required)
+  showScreen(id) {
+    document.querySelectorAll('.container > div').forEach(div => div.classList.add('hidden'));
+    document.getElementById(id)?.classList.remove('hidden');
+  }
+
+  uploadImage() {
+    this.stopMic();
+    document.getElementById('file-input').click();
+  }
+
+  goBack() {
+    this.stopMic();
+    if (this.currentStream) {
+      this.currentStream.getTracks().forEach(track => track.stop());
+      this.currentStream = null;
+    }
+    this.showScreen('initial-screen');
+    this.speak("ಮುಖಪುಟ ತೆರೆಯಲಾಗಿದೆ. ಕ್ಯಾಮೆರಾ ಅಥವಾ ಅಪ್ಲೋಡ್ ಆಯ್ಕೆಮಾಡಿ.");
+    setTimeout(() => this.startListeningForCommand('home'), 4000);
+  }
+
+  handleRescan() {
+    this.stopMic();
+    this.showScreen('initial-screen');
+    this.speak("ಹೊಸ ಚಿತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ ಅಥವಾ ಸೆರೆಹಿಡಿಯಿರಿ.");
+    setTimeout(() => this.startListeningForCommand('home'), 4000);
   }
 
   addAudioListeners(data) {
@@ -222,7 +250,6 @@ class ChitravachakaApp {
 
     this.audioPlayers = audios;
 
-    // ✅ Kannada auto-play → mic OFF, then restart after playback
     if (audios.kn) {
       audios.kn.addEventListener('play', stopMic);
       audios.kn.addEventListener('ended', startMic);
@@ -231,7 +258,7 @@ class ChitravachakaApp {
   }
 }
 
-// ✅ Kannada Voice Recognition setup
+// ✅ Voice Recognition Setup (same as before)
 if ('webkitSpeechRecognition' in window) {
   const recognition = new webkitSpeechRecognition();
   recognition.lang = 'kn-IN';
