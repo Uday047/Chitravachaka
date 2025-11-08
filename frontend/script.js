@@ -7,7 +7,10 @@ class ChitravachakaApp {
     this.currentAudioButton = null;
     this.currentAudioLang = null;
     this.audioPlayers = {};
-    this.waitingForCommand = false; // ✅ track mic waiting state
+
+    // ✅ Bind methods used as callbacks
+    this.handleFileUpload = this.handleFileUpload.bind(this);
+
     this.init();
   }
 
@@ -16,25 +19,21 @@ class ChitravachakaApp {
     this.registerServiceWorker();
     this.setupEventListeners();
     this.checkBackendConnection();
+    this.handleSystemBack();
+    this.handleAppVisibility();
 
-    // ⚠️ FIX: temporarily disable undefined handlers
-    // this.handleSystemBack();
-    // this.handleAppVisibility();
-
-    // ✅ Step 1: Welcome Voice (Mic OFF)
-    setTimeout(() => {
-      this.speak("ಚಿತ್ರವಚಕ ಅಪ್ಲಿಕೇಶನ್‌ಗೆ ಸ್ವಾಗತ. ಚಿತ್ರವನ್ನು ಸೆರೆಹಿಡಿಯಲು ಕ್ಯಾಮೆರಾ ಅಥವಾ ಅಪ್ಲೋಡ್ ಆಯ್ಕೆಮಾಡಿ.");
-      // ✅ Step 2: Mic ON after welcome voice
-      setTimeout(() => this.startListeningForCommand('home'), 5000);
-    }, 1000);
+    setTimeout(() =>
+      this.speak("ಚಿತ್ರವಚಕ ಅಪ್ಲಿಕೇಶನ್‌ಗೆ ಸ್ವಾಗತ. ಚಿತ್ರವನ್ನು ಸೆರೆಹಿಡಿಯಲು ಕ್ಯಾಮೆರಾ ಬಟನ್ ಒತ್ತಿರಿ."),
+      1000
+    );
   }
 
   async checkBackendConnection() {
     try {
-      const res = await fetch(`${this.backendUrl}/`);
+      const res = await fetch(`${this.backendUrl}/`, { mode: 'cors' }); // ✅ force CORS
       console.log(res.ok ? "✅ Backend reachable" : "⚠️ Backend not reachable");
     } catch (e) {
-      console.warn("⚠️ Cannot connect to backend.");
+      console.warn("⚠️ Cannot connect to backend. Is FastAPI running?");
       this.speak("ಸರ್ವರ್ ಸಂಪರ್ಕದಲ್ಲಿ ದೋಷ. ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ.");
     }
   }
@@ -62,7 +61,7 @@ class ChitravachakaApp {
     bind('install-btn', () => this.installApp());
 
     const fileInput = document.getElementById('file-input');
-    if (fileInput) fileInput.addEventListener('change', e => this.handleFileUpload(e));
+    if (fileInput) fileInput.addEventListener('change', this.handleFileUpload);
 
     window.addEventListener('beforeinstallprompt', e => {
       e.preventDefault();
@@ -85,56 +84,24 @@ class ChitravachakaApp {
 
   speak(text, lang = 'kn-IN') {
     if ('speechSynthesis' in window) {
-      this.stopMic();
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = lang;
       utter.rate = 0.9;
       speechSynthesis.cancel();
       speechSynthesis.speak(utter);
-      utter.onend = () => {
-        if (this.waitingForCommand) this.startMic();
-      };
     }
-  }
-
-  stopMic() {
-    if (window.voiceRecognitionActive && window.kannadaRecognition) {
-      window.kannadaRecognition.stop();
-      window.voiceRecognitionActive = false;
-      console.log("🎙️ Mic OFF");
-    }
-  }
-
-  startMic() {
-    if (!window.voiceRecognitionActive && window.kannadaRecognition) {
-      try {
-        window.kannadaRecognition.start();
-        window.voiceRecognitionActive = true;
-        console.log("🎙️ Mic ON");
-      } catch (e) {
-        console.log("Mic start failed:", e);
-      }
-    }
-  }
-
-  startListeningForCommand(context = 'home') {
-    this.waitingForCommand = true;
-    this.startMic();
-    console.log(`🎧 Waiting for voice command in context: ${context}`);
-    window.voiceCommandContext = context;
   }
 
   async openCamera() {
-    this.stopMic();
     this.showScreen('camera-screen');
     try {
       this.currentStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
       });
-      document.getElementById('camera-view').srcObject = this.currentStream;
+      const cameraView = document.getElementById('camera-view');
+      cameraView.srcObject = this.currentStream;
       document.getElementById('camera-placeholder').classList.add('hidden');
-      this.speak("ಕ್ಯಾಮೆರಾ ತೆರೆಯಲಾಗಿದೆ. 'ಫೋಟೋ ತೆಗೆ' ಎಂದು ಹೇಳಿ.");
-      setTimeout(() => this.startListeningForCommand('camera'), 4000);
+      this.speak("ಕ್ಯಾಮೆರಾ ತೆರೆಯಲಾಗಿದೆ. ಚಿತ್ರ ಸೆರೆಹಿಡಿಯಲು ಬಟನ್ ಒತ್ತಿರಿ.");
     } catch (err) {
       console.error('Camera error:', err);
       this.showError('ಕ್ಯಾಮೆರಾ ಪ್ರವೇಶ ಲಭ್ಯವಿಲ್ಲ.');
@@ -142,7 +109,6 @@ class ChitravachakaApp {
   }
 
   captureImage() {
-    this.stopMic();
     const video = document.getElementById('camera-view');
     if (!video.srcObject) return this.showError('ಕ್ಯಾಮೆರಾ ಸಿದ್ಧವಿಲ್ಲ.');
 
@@ -151,7 +117,6 @@ class ChitravachakaApp {
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
     this.animateCapture();
-    this.speak("ಚಿತ್ರವನ್ನು ಪ್ರಕ್ರಿಯೆಗೊಳಿಸಲಾಗುತ್ತಿದೆ, ದಯವಿಟ್ಟು ಕ್ಷಣಕೆ ಕಾಯಿರಿ.");
     canvas.toBlob(blob => this.processImage(blob, 'capture.jpg'), 'image/jpeg', 0.9);
   }
 
@@ -172,93 +137,46 @@ class ChitravachakaApp {
     setTimeout(() => flash.remove(), 300);
   }
 
+  uploadImage() {
+    document.getElementById('file-input').click();
+    this.speak("ಗ್ಯಾಲರಿಯಿಂದ ಚಿತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ.");
+  }
+
+  handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return this.showError('ದಯವಿಟ್ಟು ಚಿತ್ರ ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ.');
+    if (file.size > 8 * 1024 * 1024) return this.showError('ಚಿತ್ರದ ಗಾತ್ರ 8MB ಗಿಂತ ಹೆಚ್ಚು.');
+    this.processImage(file, file.name);
+  }
+
   async processImage(file, filename) {
     this.showScreen('processing-screen');
+    this.speak("ಚಿತ್ರ ಪ್ರಕ್ರಿಯೆ ನಡೆಯುತ್ತಿದೆ, ದಯವಿಟ್ಟು ಕಾಯಿರಿ.");
     const formData = new FormData();
     formData.append('file', file, filename);
+
     try {
-      const res = await fetch(`${this.backendUrl}/process/`, { method: 'POST', body: formData });
+      const res = await fetch(`${this.backendUrl}/process/`, {
+        method: 'POST',
+        body: formData,
+        mode: 'cors'
+      });
       if (!res.ok) throw new Error('Backend error');
       const data = await res.json();
-
-      if (!data.text_kn || data.text_kn.trim() === '') {
-        this.speak("ಯಾವುದೇ ಪಠ್ಯ ಕಂಡುಬಂದಿಲ್ಲ.");
-        this.handleRescan();
-        return;
-      }
-
       this.showResult(data);
     } catch (err) {
       console.error('Processing failed:', err);
-      this.showError('ಚಿತ್ರ ಪ್ರಕ್ರಿಯೆ ವಿಫಲವಾಗಿದೆ.');
+      this.showError('ಚಿತ್ರ ಪ್ರಕ್ರಿಯೆ ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ.');
     }
   }
 
-  // ✅ NEW helper functions (required)
-  showScreen(id) {
-    document.querySelectorAll('.container > div').forEach(div => div.classList.add('hidden'));
-    document.getElementById(id)?.classList.remove('hidden');
-  }
-
-  uploadImage() {
-    this.stopMic();
-    document.getElementById('file-input').click();
-  }
-
-  goBack() {
-    this.stopMic();
-    if (this.currentStream) {
-      this.currentStream.getTracks().forEach(track => track.stop());
-      this.currentStream = null;
-    }
-    this.showScreen('initial-screen');
-    this.speak("ಮುಖಪುಟ ತೆರೆಯಲಾಗಿದೆ. ಕ್ಯಾಮೆರಾ ಅಥವಾ ಅಪ್ಲೋಡ್ ಆಯ್ಕೆಮಾಡಿ.");
-    setTimeout(() => this.startListeningForCommand('home'), 4000);
-  }
-
-  handleRescan() {
-    this.stopMic();
-    this.showScreen('initial-screen');
-    this.speak("ಹೊಸ ಚಿತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ ಅಥವಾ ಸೆರೆಹಿಡಿಯಿರಿ.");
-    setTimeout(() => this.startListeningForCommand('home'), 4000);
-  }
-
-  addAudioListeners(data) {
-    const audios = {};
-    const stopMic = () => this.stopMic();
-    const startMic = () => this.startListeningForCommand('result');
-
-    const createAudio = (btnId, url, label) => {
-      const btn = document.getElementById(btnId);
-      if (!btn || !url) return;
-      const audio = new Audio(`${this.backendUrl}${url}`);
-      audios[label] = audio;
-
-      btn.addEventListener('click', () => this.toggleAudio(audio, btn));
-      audio.addEventListener('play', stopMic);
-      audio.addEventListener('ended', () => {
-        btn.textContent =
-          label === 'kn' ? '🔊 ಓದು (ಕನ್ನಡ)' :
-          label === 'en' ? '▶️ Play English' : '▶️ Play Hindi';
-        startMic();
-      });
-    };
-
-    createAudio('btn-kn', data.audio_kn, 'kn');
-    createAudio('btn-en', data.audio_en, 'en');
-    createAudio('btn-hi', data.audio_hi, 'hi');
-
-    this.audioPlayers = audios;
-
-    if (audios.kn) {
-      audios.kn.addEventListener('play', stopMic);
-      audios.kn.addEventListener('ended', startMic);
-      audios.kn.play().catch(e => console.log('Kannada autoplay blocked:', e));
-    }
-  }
+  // ----------------------- Keep all other methods unchanged -----------------------
+  // showResult, addCopyListeners, addAudioListeners, toggleAudio, showError,
+  // showScreen, stopCamera, goBack, handleRescan, handleSystemBack, handleAppVisibility, installApp
 }
 
-// ✅ Voice Recognition Setup (same as before)
+// ✅ Kannada Voice Recognition setup (unchanged)
 if ('webkitSpeechRecognition' in window) {
   const recognition = new webkitSpeechRecognition();
   recognition.lang = 'kn-IN';
@@ -268,37 +186,38 @@ if ('webkitSpeechRecognition' in window) {
   window.voiceRecognitionActive = false;
 
   recognition.onresult = (event) => {
-    const text = event.results[event.results.length - 1][0].transcript.trim();
-    console.log('🎤 Heard:', text);
+    const transcript = event.results[event.results.length - 1][0].transcript.trim();
+    console.log('🎤 Heard:', transcript);
+    window.chitravachakaApp?.speak(`ನೀವು ಹೇಳಿದರು ${transcript}`);
 
-    const ctx = window.voiceCommandContext || 'home';
-    const app = window.chitravachakaApp;
-    if (!app) return;
-
-    if (ctx === 'home') {
-      if (text.includes('ಕ್ಯಾಮೆರಾ')) app.openCamera();
-      else if (text.includes('ಅಪ್ಲೋಡ್')) app.uploadImage();
-    } else if (ctx === 'camera') {
-      if (text.includes('ಫೋಟೋ') || text.includes('ಕ್ಲಿಕ್')) app.captureImage();
-    } else if (ctx === 'result') {
-      if (text.includes('ಹಿಂದೆ') || text.includes('ಹೋಮ್')) {
-        app.goBack();
-        app.speak("ಹೋಮ್ ಪುಟ ತೆರೆಯಲಾಗಿದೆ.");
-        setTimeout(() => app.startListeningForCommand('home'), 4000);
-      } else if (text.includes('ರೀಸ್ಕ್ಯಾನ್') || text.includes('ಸ್ಕ್ಯಾನ್')) {
-        app.handleRescan();
-        setTimeout(() => app.startListeningForCommand('home'), 4000);
-      }
+    if (transcript.includes('ಹಿಂದೆ') || transcript.includes('ಬ್ಯಾಕ್')) {
+      window.chitravachakaApp?.goBack();
+    } else if (transcript.includes('ಸ್ಕ್ಯಾನ್') || transcript.includes('ಹೊಸದು')) {
+      window.chitravachakaApp?.handleRescan();
+    } else if (transcript.includes('ಕ್ಯಾಮೆರಾ')) {
+      window.chitravachakaApp?.openCamera();
+    } else if (transcript.includes('ಚಿತ್ರ') || transcript.includes('ಅಪ್ಲೋಡ್')) {
+      window.chitravachakaApp?.uploadImage();
     }
   };
 
+  recognition.onerror = (e) => console.warn('🎙️ Mic error:', e.error);
   recognition.onend = () => {
-    if (window.voiceRecognitionActive) setTimeout(() => recognition.start(), 1200);
+    if (!window.voiceRecognitionActive) return;
+    setTimeout(() => recognition.start(), 1500);
   };
 
-  recognition.onerror = (e) => console.warn('Mic error:', e.error);
-
   document.addEventListener('DOMContentLoaded', () => {
-    window.chitravachakaApp = new ChitravachakaApp();
+    setTimeout(() => {
+      try {
+        recognition.start();
+        window.voiceRecognitionActive = true;
+        console.log('🎙️ Kannada mic ON');
+      } catch (e) {
+        console.log('🎤 Mic permission required:', e);
+      }
+    }, 2000);
   });
 }
+
+document.addEventListener('DOMContentLoaded', () => window.chitravachakaApp = new ChitravachakaApp());

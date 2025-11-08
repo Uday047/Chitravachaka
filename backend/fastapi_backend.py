@@ -18,13 +18,12 @@ os.environ["TESSDATA_PREFIX"] = TESSDATA_DIR
 # ----------------- FastAPI -----------------
 app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.5")
 
-# ----------------- ✅ Security + CORS Middleware -----------------
+# ----------------- Security + CORS Middleware -----------------
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
-# ⚠️ Make sure this EXACT Netlify URL matches your deployed frontend
 origins = [
-    "https://melodious-kashata-c3d2a4.netlify.app/",  # ✅ Netlify frontend (no trailing /)
-    "https://chitravachaka-production.up.railway.app",  # ✅ Railway backend
+    "https://melodious-kashata-c3d2a4.netlify.app",  # ✅ frontend
+    "https://chitravachaka-production.up.railway.app", # ✅ backend
     "http://localhost:3000",
     "http://127.0.0.1:5500"
 ]
@@ -35,7 +34,6 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],  # ✅ fixes preflight
 )
 
 # ----------------- Static folders -----------------
@@ -70,7 +68,6 @@ async def process_image(file: UploadFile = File(...)):
     if not contents:
         raise HTTPException(status_code=400, detail="Empty file")
 
-    # Save uploaded image
     upload_filename = f"{uuid.uuid4().hex}.jpg"
     upload_path = f"static/uploads/{upload_filename}"
     with open(upload_path, "wb") as f:
@@ -80,7 +77,6 @@ async def process_image(file: UploadFile = File(...)):
     if image.mode != 'RGB':
         image = image.convert('RGB')
 
-    # OCR extraction
     text_kn = extract_text(image, upload_filename)
     if not text_kn.strip():
         return JSONResponse({
@@ -94,12 +90,10 @@ async def process_image(file: UploadFile = File(...)):
             "error": "No text found"
         })
 
-    # Generate audio filenames
     audio_kn_file = f"static/audio/{uuid.uuid4().hex}_kn.mp3"
     audio_en_file = f"static/audio/{uuid.uuid4().hex}_en.mp3"
     audio_hi_file = f"static/audio/{uuid.uuid4().hex}_hi.mp3"
 
-    # Run translation + TTS concurrently
     trans_en_task = asyncio.create_task(async_translate(text_kn, 'en'))
     trans_hi_task = asyncio.create_task(async_translate(text_kn, 'hi'))
     tts_kn_task = asyncio.create_task(async_tts(text_kn, 'kn', audio_kn_file))
