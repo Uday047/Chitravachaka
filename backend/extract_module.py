@@ -15,21 +15,25 @@ def configure_tesseract():
     global _TESSERACT_CONFIGURED
     if _TESSERACT_CONFIGURED:
         return
+
     win_path = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+    # WINDOWS
     if sys.platform == "win32" and os.path.exists(win_path):
         pytesseract.pytesseract.tesseract_cmd = win_path
         os.environ["TESSDATA_PREFIX"] = r"C:\Program Files\Tesseract-OCR\tessdata"
+
+    # LINUX — Render / Docker
     elif shutil.which("tesseract"):
-        # ✅ Ensure correct binary path on Linux (Railway/Docker)
         pytesseract.pytesseract.tesseract_cmd = shutil.which("tesseract") or "/usr/bin/tesseract"
-        os.environ["TESSDATA_PREFIX"] = "/usr/share/tesseract-ocr/4.00/tessdata"
+        # correct path for Render/Debian bookworm-backports
+        os.environ["TESSDATA_PREFIX"] = "/usr/share/tesseract-ocr/5/tessdata"
+
     else:
         raise OSError("Tesseract not found. Install Tesseract and ensure it's in PATH.")
-    
-    # ✅ Preserve your Render/local tessdata override
-    os.environ["TESSDATA_PREFIX"] = os.path.join(os.path.dirname(__file__), "tessdata")
 
     print(f"[INFO] Tesseract configured: {pytesseract.pytesseract.tesseract_cmd}")
+    print(f"[INFO] TESSDATA_PREFIX = {os.environ['TESSDATA_PREFIX']}")
     _TESSERACT_CONFIGURED = True
 
 # Wordlist support
