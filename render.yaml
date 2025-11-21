@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: chitravachaka-backend
+    plan: free
+    env: docker
+    repo: https://github.com/kimjongun009/Kannada-TTS-App
+    branch: main
+    dockerfilePath: backend/Dockerfile
+    autoDeploy: true
+    healthCheckPath: /
