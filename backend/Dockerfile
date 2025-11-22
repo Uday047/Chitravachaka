@@ -20,7 +20,7 @@ COPY backend /app/backend
 RUN which tesseract && tesseract --version
 
 # -------- EXPOSE PORT --------
-EXPOSE 8080
+EXPOSE 10000
 
 # -------- START COMMAND --------
-CMD ["uvicorn", "backend.fastapi_backend:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "backend.fastapi_backend:app", "--host", "0.0.0.0", "--port", "10000"]
