@@ -25,15 +25,23 @@ def configure_tesseract():
 
     # LINUX — Render / Docker
     elif shutil.which("tesseract"):
-        pytesseract.pytesseract.tesseract_cmd = shutil.which("tesseract") or "/usr/bin/tesseract"
-        # correct path for Render/Debian bookworm-backports
-        os.environ["TESSDATA_PREFIX"] = "/usr/share/tesseract-ocr/5/tessdata"
+        pytesseract.pytesseract.tesseract_cmd = shutil.which("tesseract")
+
+        # Auto-detect tessdata directory
+        for p in [
+            "/usr/share/tesseract-ocr/5/tessdata",
+            "/usr/share/tesseract-ocr/4.00/tessdata",
+            "/usr/share/tesseract-ocr/tessdata",
+        ]:
+            if os.path.exists(p):
+                os.environ["TESSDATA_PREFIX"] = p
+                break
 
     else:
         raise OSError("Tesseract not found. Install Tesseract and ensure it's in PATH.")
 
     print(f"[INFO] Tesseract configured: {pytesseract.pytesseract.tesseract_cmd}")
-    print(f"[INFO] TESSDATA_PREFIX = {os.environ['TESSDATA_PREFIX']}")
+    print(f"[INFO] TESSDATA_PREFIX = {os.environ.get('TESSDATA_PREFIX')}")
     _TESSERACT_CONFIGURED = True
 
 # Wordlist support
@@ -62,10 +70,10 @@ def ensure_grayscale(img: np.ndarray) -> np.ndarray:
     return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img.ndim == 3 else img
 
 def upscale_for_dpi(img: np.ndarray, min_height=1200) -> np.ndarray:
-    h, w = img.shape[:2]
+    h, _ = img.shape[:2]
     if h >= min_height: return img
     scale = min_height / h
-    return cv2.resize(img, (int(w*scale), int(min_height)), interpolation=cv2.INTER_CUBIC)
+    return cv2.resize(img, (0,0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
 
 def unsharp_mask(img: np.ndarray, amount=1.2, ksize=(5,5)) -> np.ndarray:
     blur = cv2.GaussianBlur(img, ksize, 0)
@@ -103,8 +111,11 @@ def tesseract_confidence_and_text(img_for_tess: Union[np.ndarray, Image.Image], 
     for i, txt in enumerate(data.get('text', [])):
         t = (txt or "").strip()
         if t: texts.append(t)
-        try: c = float(data['conf'][i]); confs.append(c if c>=0 else 0)
-        except: pass
+        try:
+            c = float(data['conf'][i])
+            confs.append(c if c >= 0 else 0)
+        except:
+            pass
     return (sum(confs)/len(confs) if confs else -1, " ".join(texts).strip())
 
 def extract_text(image_source: Union[str, np.ndarray, Image.Image], image_name="temp.jpg", lang="kan") -> str:
@@ -122,20 +133,17 @@ def extract_text(image_source: Union[str, np.ndarray, Image.Image], image_name="
     gray = remove_borders(gray)
     gray = upscale_for_dpi(gray, 1200)
 
-    # Variants for better accuracy
+    # OCR variants
     variants = []
 
-    # Variant A: Histogram Equalization + Unsharp
     a = cv2.equalizeHist(gray)
     a = unsharp_mask(a, amount=1.2, ksize=(3,3))
     variants.append(("hist_unsharp", a))
 
-    # Variant B: CLAHE + Median Blur
     b = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8)).apply(gray)
     b = cv2.medianBlur(b, 3)
     variants.append(("clahe_median", b))
 
-    # Variant C: Bilateral Filter + Adaptive Threshold + Morphology
     c = cv2.bilateralFilter(gray, 9, 75, 75)
     c = cv2.medianBlur(c, 3)
     block = max(11, int(min(c.shape[:2]) / 16) | 1)
@@ -143,18 +151,16 @@ def extract_text(image_source: Union[str, np.ndarray, Image.Image], image_name="
     c = morphological_clean(c)
     variants.append(("bilateral_adapt_morph", c))
 
-    # Variant D: Gamma Correction + Histogram
     d = gamma_correction(gray, gamma=0.85)
     d = cv2.equalizeHist(d)
     variants.append(("gamma_hist", d))
 
-    # OCR scanning
-    best={"conf":-9999,"text":""}
-    base_wordlist=f' --user-words "{TESSERACT_WORDLIST}"' if os.path.exists(TESSERACT_WORDLIST) else ""
+    # Selection
+    best = {"conf": -9999, "text": ""}
+    base_wordlist = f' --user-words "{TESSERACT_WORDLIST}"' if os.path.exists(TESSERACT_WORDLIST) else ""
 
-    # PSMs and OEMs
-    psm_list = [6, 4, 3, 12]  # Added 12 for sparse text
-    oem_list = [3, 1]          # LSTM and LSTM+legacy
+    psm_list = [6, 4, 3, 12]
+    oem_list = [3, 1]
 
     for name, var in variants:
         proc = ensure_grayscale(var)
@@ -163,7 +169,7 @@ def extract_text(image_source: Union[str, np.ndarray, Image.Image], image_name="
                 config = f"--oem {oem} --psm {psm} --dpi 300" + base_wordlist
                 avg_conf, txt = tesseract_confidence_and_text(proc, lang=lang, config=config)
                 txt_clean = txt.strip() if txt else ""
-                score = (avg_conf if avg_conf>0 else 0) + min(len(txt_clean),300)/300*5
+                score = (avg_conf if avg_conf > 0 else 0) + min(len(txt_clean), 300)/300 * 5
                 if score > best["conf"] and txt_clean:
                     best.update({"conf": score, "text": txt_clean})
 
