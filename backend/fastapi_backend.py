@@ -1,5 +1,5 @@
 import os, pytesseract, uuid, io, asyncio
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -19,8 +19,6 @@ os.environ["TESSDATA_PREFIX"] = TESSDATA_DIR
 
 # ----------------- FastAPI -----------------
 app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.5")
-
-# Backend domain for production
 BASE_URL = os.getenv("RENDER_EXTERNAL_URL", "https://chitravachaka.onrender.com").rstrip("/")
 
 
@@ -29,11 +27,21 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # allow all frontends (Netlify, localhost, Android)
-    allow_credentials=False,    # MUST be False when allow_origins="*"
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 🔥 Add security headers (fixes missing x-content-type-options + CORS block)
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 # ----------------- Static directories -----------------
@@ -64,10 +72,18 @@ async def health_check():
     return {"status": "healthy"}
 
 
-# ⚠ Handle preflight request for CORS
+# ⚠ Correct OPTIONS + headers (fixes Render preflight rejection)
 @app.options("/process/")
 async def process_preflight():
-    return JSONResponse({"status": "ok"})
+    return Response(
+        content="OK",
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
 
 
 @app.post("/process/")
