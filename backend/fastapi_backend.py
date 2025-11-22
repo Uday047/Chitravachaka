@@ -20,14 +20,17 @@ os.environ["TESSDATA_PREFIX"] = TESSDATA_DIR
 # ----------------- FastAPI -----------------
 app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.5")
 
+# Backend domain for production
+BASE_URL = os.getenv("RENDER_EXTERNAL_URL", "https://chitravachaka.onrender.com").rstrip("/")
+
 
 # ----------------- Security + CORS Middleware -----------------
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=["*"],        # allow all frontends (Netlify, localhost, Android)
+    allow_credentials=False,    # MUST be False when allow_origins="*"
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -36,10 +39,6 @@ app.add_middleware(
 # ----------------- Static directories -----------------
 os.makedirs("static/audio", exist_ok=True)
 os.makedirs("static/uploads", exist_ok=True)
-
-
-# BASE URL for static files
-BASE_URL = os.getenv("BASE_URL", "")  # Render will inject BASE_URL, otherwise frontend will use relative paths
 
 
 # ----------------- Async helpers -----------------
@@ -63,6 +62,12 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+# ⚠ Handle preflight request for CORS
+@app.options("/process/")
+async def process_preflight():
+    return JSONResponse({"status": "ok"})
 
 
 @app.post("/process/")
@@ -122,10 +127,11 @@ async def process_image(file: UploadFile = File(...)):
     }
 
 
-# ----------------- Static files -----------------
+# ----------------- Static file mounting -----------------
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+# ----------------- LOCAL + DEPLOY RUN -----------------
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8080))
