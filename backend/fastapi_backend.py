@@ -107,16 +107,17 @@ async def process_image(file: UploadFile = File(...)):
     tts_hi_task = asyncio.create_task(async_tts(text_hi, "hi", audio_hi_file))
     await asyncio.gather(tts_kn_task, tts_en_task, tts_hi_task)
 
-    return {
-        "image_url": f"/static/uploads/{upload_filename}",
-        "text_kn": text_kn,
-        "audio_kn": f"/{audio_kn_file}",
-        "text_en": text_en,
-        "audio_en": f"/{audio_en_file}",
-        "text_hi": text_hi,
-        "audio_hi": f"/{audio_hi_file}",
-        "error": None
-    }
+  return {
+    "image_url": f"{BASE_URL}/static/uploads/{upload_filename}",
+    "text_kn": text_kn,
+    "audio_kn": f"{BASE_URL}/{audio_kn_file}",
+    "text_en": text_en,
+    "audio_en": f"{BASE_URL}/{audio_en_file}",
+    "text_hi": text_hi,
+    "audio_hi": f"{BASE_URL}/{audio_hi_file}",
+    "error": None
+}
+
 
 
 # ----------------- Static file mounting -----------------
