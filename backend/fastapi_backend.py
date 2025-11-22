@@ -24,10 +24,9 @@ app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.5")
 # ----------------- Security + CORS Middleware -----------------
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
-# 🔥 NEW FINAL CORS (fixes "ಸರ್ವರ್ ದೋಷ")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # Accept request from ANY domain (Netlify, localhost, Android app etc)
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,6 +36,10 @@ app.add_middleware(
 # ----------------- Static directories -----------------
 os.makedirs("static/audio", exist_ok=True)
 os.makedirs("static/uploads", exist_ok=True)
+
+
+# BASE URL for static files
+BASE_URL = os.getenv("BASE_URL", "")  # Render will inject BASE_URL, otherwise frontend will use relative paths
 
 
 # ----------------- Async helpers -----------------
@@ -84,7 +87,7 @@ async def process_image(file: UploadFile = File(...)):
 
     if not text_kn.strip():
         return JSONResponse({
-            "image_url": f"/static/uploads/{upload_filename}",
+            "image_url": f"{BASE_URL}/static/uploads/{upload_filename}",
             "text_kn": "",
             "audio_kn": None,
             "text_en": "",
@@ -107,24 +110,22 @@ async def process_image(file: UploadFile = File(...)):
     tts_hi_task = asyncio.create_task(async_tts(text_hi, "hi", audio_hi_file))
     await asyncio.gather(tts_kn_task, tts_en_task, tts_hi_task)
 
-  return {
-    "image_url": f"{BASE_URL}/static/uploads/{upload_filename}",
-    "text_kn": text_kn,
-    "audio_kn": f"{BASE_URL}/{audio_kn_file}",
-    "text_en": text_en,
-    "audio_en": f"{BASE_URL}/{audio_en_file}",
-    "text_hi": text_hi,
-    "audio_hi": f"{BASE_URL}/{audio_hi_file}",
-    "error": None
-}
+    return {
+        "image_url": f"{BASE_URL}/static/uploads/{upload_filename}",
+        "text_kn": text_kn,
+        "audio_kn": f"{BASE_URL}/{audio_kn_file}",
+        "text_en": text_en,
+        "audio_en": f"{BASE_URL}/{audio_en_file}",
+        "text_hi": text_hi,
+        "audio_hi": f"{BASE_URL}/{audio_hi_file}",
+        "error": None
+    }
 
 
-
-# ----------------- Static file mounting -----------------
+# ----------------- Static files -----------------
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-# ----------------- LOCAL + DEPLOY RUN -----------------
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8080))
