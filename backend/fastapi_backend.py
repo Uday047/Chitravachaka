@@ -24,19 +24,13 @@ app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.5")
 # ----------------- Security + CORS Middleware -----------------
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
-origins = [
-    "https://magnificent-lamington-9d1886.netlify.app",  # LIVE frontend
-    "http://localhost:3000",  # local React
-    "http://127.0.0.1:5500"   # local static HTML
-]
-
+# 🔥 NEW FINAL CORS (fixes "ಸರ್ವರ್ ದೋಷ")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],          # Accept request from ANY domain (Netlify, localhost, Android app etc)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
 
 
